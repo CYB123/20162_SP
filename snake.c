@@ -78,11 +78,12 @@ void move_head(snake *snake1, snake_pos *pos1);
 void food_print(food *food1);
 int game_over(snake *snake1, snake_pos *pos1);
 void set_borders();
+void add_block();
 void print_score(int*);
+int mygetch();
 int print_result(void);/* 추가 : 메뉴에서 기록출력시 호출되어 기록을 출력하는 함수*/
-int search_result(void); /*추가 : 메뉴에서 기록검색시 호출되어 기러고을 검색하는 함수*/
 
-int snake_speed = 100000;
+int snake_speed = 200000;
 int score = 0;
 int best_point = 0; /* 추가 : 게임 최고 점수를 알려주는 변수*/
 
@@ -128,36 +129,22 @@ void main_screen()
 
       gotoxy(10,14);
       printf("Button : a(←) w(↑) d(→) s(↓)");
-      gotoxy(10,15);
+	  gotoxy(10,15);
       printf("Pause  : p");
       gotoxy(10,16);
       printf("Quit   : ESC");
-	  // --------------- 추가 된곳
-	  gotoxy(10,17);
-	  printf("점수판   : 1");
-	  gotoxy(10,18);
-      printf("점수검색   : 2");
+    
 
-
-      gotoxy(10,19);
+      gotoxy(10,17);
       printf("Press Enter button to start game!");
-	  scanf("%d", &button);
-	  if(button = '1'){
-			print_result();
-		}
-		else if(button = '2'){
-			search_result();
-		}
 
       while(!kbhit()){
       	button=getchar();
-	    if(button = 's'){
+	if(button = 's'){
       		system("clear");
       		system("stty echo");
 		break;
-	    }
-		
-		// --------------- 추가 된곳
+	  }
       }
      
 }
@@ -166,6 +153,7 @@ void main_screen()
 
 void playing_screen()
 {
+  //    int key=0;
       /* struct init */
 
       snake snake1;
@@ -183,6 +171,7 @@ void playing_screen()
       //curs_set(0);                    // doesn't work for some reason
       snake_place(&snake1,&pos1);
       set_borders();
+      add_block();
       food_print(&food1);
 
 
@@ -200,6 +189,7 @@ void playing_screen()
 
           while (!kbhit())
           {
+		 snake_speed = snake_speed - (score*10)+((score-10)*10);
                  usleep(snake_speed);
                  snake_move(&snake1,&pos1,&food1,&score);
 		 if (game_over(&snake1,&pos1))
@@ -238,19 +228,13 @@ void gameover_screen()
       system("stty echo");
       system("clear");
 
-      gotoxy(30,5);
-      printf("                       ");
-      gotoxy(30,6);
-      printf("                       ");
-      gotoxy(30,7);
-      printf("                       ");
       gotoxy(30,8);
       printf("   G A M E   O V E R   ");
-      gotoxy(30,9);
+      gotoxy(30,10);
 
       // --------------- 추가 된곳
-				printf(" 최종 득점 : %d ", score);
-				gotoxy(30,10);
+				printf("Your score : %d , Best score : %d \n\n", score,best_point);
+				gotoxy(30,11);
 				printf(" 이름을 입력 하세요 : ");
 				scanf("%s%*c", temp_result.name);
 				temp_result.point = score;
@@ -273,11 +257,8 @@ void gameover_screen()
 				fwrite(&temp_result, sizeof(struct result), 1, fp);
 				fclose(fp);
 
-				score = 0;
-
-
-      gotoxy(30,15);
-      printf("Your score : %d , Best score : %d \n\n", score,best_point);
+				print_result();
+    
       score = 0;
 	  // --------------- 추가 된곳
 
@@ -331,7 +312,20 @@ void set_borders()
     printf(" ");
 }
 
-
+void add_block()
+{
+     int i;
+     for(i=0; i<14; ++i)
+     {
+	gotoxy(40,i);
+    	printf(" ");	
+     }
+     for(i=7; i<vertical; ++i)
+     {
+	gotoxy(11,i);
+    	printf(" ");
+     }
+}
 
 
 void snake_move(snake *snake1, snake_pos *pos1, food *food1, int *score)
@@ -433,9 +427,23 @@ void move_head(snake *snake1, snake_pos *pos1)
 
 void food_init(food *food1)
 {
-    food1->X=(rand()%(horizontal-3))+2;
-    food1->Y=(rand()%(vertical-3))+2;
-    food1->symbol='F';
+    int i,
+        x = rand()%(horizontal-3)+2,
+        y = rand()%(vertical-3)+2;
+    
+    while((x!=11 && y!=vertical) && (x!=40 &&y!=13)){
+	    for(i=7; i<vertical; ++i){
+	        if((x==11) && (y==i))
+	             x = rand()%(horizontal-3)+2;
+	    }
+	    for(i=0; i<14; ++i){
+	        if((x==40) && (y==i))
+	             y = rand()%(vertical-3)+2;
+	    }
+    }
+    food1->X=x;
+    food1->Y=y;
+    food1->symbol='@';
 }
 
 
@@ -478,11 +486,31 @@ int game_over(snake *snake1, snake_pos *pos1)
             return 1;
         }
 
+    for(i=7; i<vertical; ++i){
+        if((snake1->head_X==11) && (snake1->head_Y==i))
+		return 1;
+    }
+    for(i=0; i<14; ++i){
+        if((snake1->head_X==40) && (snake1->head_Y==i))
+		return 1;
+    }
 
     return 0;
 }
 
-
+int mygetch(void)
+{
+  struct termios oldt,
+  newt;
+  int ch;
+  tcgetattr( STDIN_FILENO, &oldt );
+  newt = oldt;
+  newt.c_lflag &= ~( ICANON | ECHO );
+  tcsetattr( STDIN_FILENO, TCSANOW, &newt );
+  ch = getchar();
+  tcsetattr( STDIN_FILENO, TCSANOW, &oldt );
+  return ch;
+}
 
 int kbhit(void)
 {
@@ -511,58 +539,12 @@ int kbhit(void)
   return 0;
 }
 
-/*추가 : 메뉴에서 기록검색시 호출되어 기러고을 검색하는 함수*/
-int search_result(void)
-{
-	FILE *fp = NULL;
-	char name[30];
-	char ch;
-	int find = 0;
-
-	fp = fopen("result", "rb");
-
-	if(fp == NULL)
-		return 0;
-
-	system("clear");
-
-	printf("\n\n\t\t검색할 이름을 입력하세요.  : ");
-	scanf("%s%*c", name);
-
-	printf("\n\t\t\t\tText Tetris");
-	printf("\n\t\t\t\t 게임 기록\n\n");
-	printf("\n\t\t이름\t\t점수\t   날짜\t\t 시간");
-
-	while(1)
-	{
-		fread(&temp_result, sizeof(struct result), 1, fp);
-		if(!feof(fp))
-		{
-			if(!strcmp(temp_result.name, name))
-			{
-				find = 1;
-				printf("\n\t========================================================");
-				printf("\n\t\t%s\n\t\t\t\t%d\t%d. %d. %d.  |  %d : %d\n", temp_result.name, temp_result.point, temp_result.year, temp_result.month, temp_result.day, temp_result.hour, temp_result.min);
-			}
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	if(find == 0)
-		printf("\n\n\n\t\t검색된 이름이 없습니다.");
-
-
-	exit(0);
-}
-
 /* 추가 : 메뉴에서 기록출력시 호출되어 기록을 출력하는 함수*/
 int print_result(void)
 {
 	FILE *fp = NULL;
 	char ch = 1 ;
+	int i = 0;
 
 	fp = fopen("result", "rb");
 
@@ -570,18 +552,22 @@ int print_result(void)
 		return 0;
 
 	system("clear");
-
-	printf("\n\t\t\t\tText Tetris");
-	printf("\n\t\t\t\t 게임 기록\n\n");
-	printf("\n\t\t이름\t\t점수\t   날짜\t\t 시간");
+	
+	gotoxy(30,10);
+	printf("< 게임 기록>");
+	gotoxy(30,11);
+	printf("이름\t점수\t날짜\t\t 시간");
 
 	while(1)
 	{
 			fread(&temp_result, sizeof(struct result), 1, fp);
 			if(!feof(fp))
 			{
-				printf("\n\t========================================================");
-				printf("\n\t\t%s\n\t\t\t\t%d\t %d. %d. %d.  |  %d : %d\n", temp_result.name, temp_result.point, temp_result.year, temp_result.month, temp_result.day, temp_result.hour, temp_result.min);
+				gotoxy(30,13+i);
+				printf("==============================================");
+				gotoxy(30,14+i);
+				printf("%s\t%d\t %d. %d. %d.  |  %d : %d\n", temp_result.name, temp_result.point, temp_result.year, temp_result.month, temp_result.day, temp_result.hour, temp_result.min);
+				i = i + 2;
 			}
 			else
 			{
@@ -591,6 +577,6 @@ int print_result(void)
 
 	fclose(fp);
 
-	exit(0);
+	return 0;
 
 }
